@@ -18,10 +18,9 @@ CommonDisplayItem::CommonDisplayItem(IPluginItem* item)
 
 bool CommonDisplayItem::operator<(const CommonDisplayItem& item) const
 {
-    if (is_plugin && !item.is_plugin)
-        return false;
-    else if (!is_plugin && item.is_plugin)
-        return true;
+    // 旧配置按位置保存顺序和颜色，新项目排在原有插件之后。
+    if (is_plugin != item.is_plugin)
+        return is_plugin ? item.item_type >= TDI_COMMITTED_MEMORY : item_type < TDI_COMMITTED_MEMORY;
     else if (!is_plugin)
         return item_type < item.item_type;
     else
@@ -71,6 +70,7 @@ CString CommonDisplayItem::GetItemName() const
         case TDI_TOTAL_SPEED: return CCommon::LoadText(IDS_TOTAL_NET_SPEED);
         case TDI_CPU: return CCommon::LoadText(IDS_CPU_USAGE);
         case TDI_MEMORY: return CCommon::LoadText(IDS_MEMORY_USAGE);
+        case TDI_COMMITTED_MEMORY: return CCommon::LoadText(IDS_COMMITTED_MEMORY);
         case TDI_GPU_USAGE: return CCommon::LoadText(IDS_GPU_USAGE);
         case TDI_CPU_TEMP: return CCommon::LoadText(IDS_CPU_TEMPERATURE);
         case TDI_GPU_TEMP: return CCommon::LoadText(IDS_GPU_TEMPERATURE);
@@ -129,6 +129,9 @@ std::wstring CommonDisplayItem::DefaultString(bool is_main_window) const
         case TDI_MEMORY:
             default_text = CCommon::LoadText(IDS_MEMORY_DISP, _T(": "));
             break;
+        case TDI_COMMITTED_MEMORY:
+            default_text = CCommon::LoadText(IDS_COMMITTED_MEMORY, _T(": "));
+            break;
         case TDI_GPU_USAGE:
             default_text = CCommon::LoadText(IDS_GPU_DISP, _T(": "));
             break;
@@ -167,6 +170,7 @@ const wchar_t* CommonDisplayItem::GetItemIniKeyName() const
         case TDI_DOWN: return L"down_string";
         case TDI_CPU: return L"cpu_string";
         case TDI_MEMORY: return L"memory_string";
+        case TDI_COMMITTED_MEMORY: return L"committed_memory_string";
         case TDI_GPU_USAGE: return L"gpu_string";
         case TDI_CPU_TEMP: return L"cpu_temp_string";
         case TDI_GPU_TEMP: return L"gpu_temp_string";
@@ -236,6 +240,15 @@ CString CommonDisplayItem::GetItemValueText(bool is_main_window) const
             else
                 str_value = CCommon::UsageToString(theApp.m_memory_usage, *cfg_data);
             break;
+        case TDI_COMMITTED_MEMORY:
+        {
+            const auto memory = theApp.m_committed_memory.load();
+            if (memory.limit_bytes == 0)
+                return _T("--");
+            const bool space = cfg_data->separate_value_unit_with_space;
+            return CCommon::DataSizeToString(memory.used_bytes, space) + _T(" / ")
+                + CCommon::DataSizeToString(memory.limit_bytes, space);
+        }
         //显卡利用率
         case TDI_GPU_USAGE:
             str_value = CCommon::UsageToString(theApp.m_gpu_usage, *cfg_data);
@@ -305,6 +318,9 @@ CString CommonDisplayItem::GetItemValueSampleText(bool is_main_window) const
         case TDI_MEMORY:
             sample_str = _T("51 %");
             break;
+        case TDI_COMMITTED_MEMORY:
+            sample_str = _T("12.34 GB / 32.00 GB");
+            break;
         case TDI_CPU_TEMP: case TDI_GPU_TEMP: case TDI_HDD_TEMP: case TDI_MAIN_BOARD_TEMP:
             sample_str = _T("40 °C");
             break;
@@ -349,6 +365,14 @@ CString CommonDisplayItem::GetItemValueSampleText(bool is_main_window) const
             if (theApp.m_taskbar_data.speed_short_mode && !theApp.m_taskbar_data.unit_byte && !theApp.m_taskbar_data.hide_unit)
                 sample_str += _T('b');
         }
+            break;
+        case TDI_COMMITTED_MEMORY:
+            sample_str = GetItemValueText(false);
+            for (int i = 0; i < sample_str.GetLength(); ++i)
+            {
+                if (sample_str[i] >= L'0' && sample_str[i] <= L'9')
+                    sample_str.SetAt(i, L'8');
+            }
             break;
         //占用率百分比
         case TDI_CPU:

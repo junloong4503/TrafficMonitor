@@ -14,6 +14,7 @@
 #include "SimpleXML.h"
 #include "TaskbarDefaultStyle.h"
 #include <map>
+#include <atomic>
 #include "OpenHardwareMonitor/OpenHardwareMonitorApi.h"
 #include "PluginManager.h"
 #include "Nullable.hpp"
@@ -51,6 +52,12 @@ public:
     int m_memory_usage{ -1 };   //内存利用率
     int m_used_memory{};    //可用物理内存（单位为KB）
     int m_total_memory{};   //物理内存总量（单位为KB）
+    struct CommittedMemory
+    {
+        unsigned long long used_bytes;
+        unsigned long long limit_bytes;
+    };
+    std::atomic<CommittedMemory> m_committed_memory{ CommittedMemory{} };
     float m_cpu_temperature{ -1 };  //CPU温度
     float m_cpu_freq{ -1 };  //CPU 频率
     float m_gpu_temperature{ -1 };  //显卡温度

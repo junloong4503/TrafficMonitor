@@ -235,11 +235,12 @@ void CTaskBarDlg::DrawDisplayItem(IDrawCommon& drawer, DisplayItem type, CRect r
     }
 
     // 绘制状态条
-    if (type == TDI_CPU || type == TDI_MEMORY || type == TDI_GPU_USAGE || type == TDI_CPU_TEMP
+    if (type == TDI_CPU || type == TDI_MEMORY || type == TDI_COMMITTED_MEMORY || type == TDI_GPU_USAGE || type == TDI_CPU_TEMP
         || type == TDI_GPU_TEMP || type == TDI_HDD_TEMP || type == TDI_MAIN_BOARD_TEMP || type == TDI_HDD_USAGE
         || type == TDI_UP || type == TDI_DOWN || type == TDI_TOTAL_SPEED/* ||type==TDI_CPU_FREQ*/)
     {
         int figure_value{};
+        bool has_figure_value = true;
         switch (type)
         {
         case TDI_CPU:
@@ -248,6 +249,14 @@ void CTaskBarDlg::DrawDisplayItem(IDrawCommon& drawer, DisplayItem type, CRect r
         case TDI_MEMORY:
             figure_value = theApp.m_memory_usage;
             break;
+        case TDI_COMMITTED_MEMORY:
+        {
+            const auto memory = theApp.m_committed_memory.load();
+            has_figure_value = memory.limit_bytes != 0;
+            if (has_figure_value)
+                figure_value = static_cast<int>(100.0 * memory.used_bytes / memory.limit_bytes);
+            break;
+        }
         case TDI_GPU_USAGE:
             figure_value = theApp.m_gpu_usage;
             break;
@@ -282,8 +291,8 @@ void CTaskBarDlg::DrawDisplayItem(IDrawCommon& drawer, DisplayItem type, CRect r
             break;
         }
 
-        if ((type != TDI_UP && type != TDI_DOWN && type != TDI_TOTAL_SPEED) && theApp.m_taskbar_data.show_status_bar
-            || (type == TDI_UP || type == TDI_DOWN || type == TDI_TOTAL_SPEED) && theApp.m_taskbar_data.show_netspeed_figure)
+        const bool is_netspeed = type == TDI_UP || type == TDI_DOWN || type == TDI_TOTAL_SPEED;
+        if (has_figure_value && (is_netspeed ? theApp.m_taskbar_data.show_netspeed_figure : theApp.m_taskbar_data.show_status_bar))
         {
             if (theApp.m_taskbar_data.cm_graph_type)
             {

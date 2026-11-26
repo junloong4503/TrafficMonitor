@@ -18,6 +18,8 @@
 #include "WineTaskbarDlg.h"
 #include "TaskbarHelper.h"
 #include "SkinManager.h"
+#include <psapi.h>
+#pragma comment(lib, "psapi.lib")
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -1461,6 +1463,16 @@ void CTrafficMonitorDlg::DoMonitorAcquisition()
     theApp.m_memory_usage = statex.dwMemoryLoad;
     theApp.m_used_memory = static_cast<int>((statex.ullTotalPhys - statex.ullAvailPhys) / 1024);
     theApp.m_total_memory = static_cast<int>(statex.ullTotalPhys / 1024);
+
+    CTrafficMonitorApp::CommittedMemory committed{};
+    PERFORMANCE_INFORMATION perf{};
+    if (::GetPerformanceInfo(&perf, sizeof(perf)))
+    {
+        const unsigned long long page_size = perf.PageSize;
+        committed.used_bytes = perf.CommitTotal * page_size;
+        committed.limit_bytes = perf.CommitLimit * page_size;
+    }
+    theApp.m_committed_memory.store(committed);
 
 #ifndef WITHOUT_TEMPERATURE
     //获取温度
